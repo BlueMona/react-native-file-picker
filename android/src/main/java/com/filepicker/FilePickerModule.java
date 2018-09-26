@@ -89,6 +89,13 @@ public class FilePickerModule extends ReactContextBaseJavaModule implements Acti
 
         response = Arguments.createMap();
 
+        if (!permissionsCheck(currentActivity)) {
+            response.putBoolean("didRequestPermission", true);
+            response.putString("option", "launchFileChooser");
+            callback.invoke(response);
+            return;
+        }
+
         if (currentActivity == null) {
             response.putString("error", "can't find current Activity");
             callback.invoke(response);
@@ -168,6 +175,10 @@ public class FilePickerModule extends ReactContextBaseJavaModule implements Acti
               response.putString("path", path);
           }
       }
+
+      response.putString("type", currentActivity.getContentResolver().getType(uri));
+      response.putString("fileName", getFileNameFromUri(currentActivity, uri));
+
       mCallback.invoke(response);
     }
 
@@ -198,10 +209,16 @@ public class FilePickerModule extends ReactContextBaseJavaModule implements Acti
             else if (isDownloadsDocument(uri)) {
 
                 final String id = DocumentsContract.getDocumentId(uri);
-                final Uri contentUri = ContentUris.withAppendedId(
-                        Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
+                final String[] split = id.split(":");
+                final String type = split[0];
+                if ("raw".equalsIgnoreCase(type)) {
+                    return split[1];
+                } else {
+                    final Uri contentUri = ContentUris.withAppendedId(
+                            Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
 
-                return getDataColumn(context, contentUri, null, null);
+                    return getDataColumn(context, contentUri, null, null);
+                }
             }
             // MediaProvider
             else if (isMediaDocument(uri)) {
